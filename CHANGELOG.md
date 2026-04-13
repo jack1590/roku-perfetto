@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2] - 2026-04-13
+
+### Fixed
+- **Binary download**: Download the actual `trace_processor_shell` Mach-O/ELF binary directly from Google Cloud Storage instead of the Python wrapper script from `get.perfetto.dev`. The Python wrapper required `python3` in PATH which is unavailable in IDE-hosted MCP server processes (e.g. Cursor), causing all queries to fail silently.
+- Auto-detects and replaces the old Python wrapper script if present (size < 1MB check).
+- Pinned to Perfetto v54.0 with platform-specific URLs (macOS arm64/amd64, Linux amd64/arm64/arm).
+
 ## [1.0.1] - 2026-04-13
 
 ### Fixed

@@ -7,17 +7,32 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
-const DOWNLOAD_URL = 'https://get.perfetto.dev/trace_processor';
+const PERFETTO_VERSION = 'v54.0';
 const DEFAULT_CACHE_DIR = path.join(os.homedir(), '.roku-perfetto', 'bin');
-const BINARY_NAME = 'trace_processor';
+const BINARY_NAME = 'trace_processor_shell';
 
-function getPlatform(): 'linux' | 'mac' {
-  const p = os.platform();
-  if (p === 'darwin') return 'mac';
-  if (p === 'linux') return 'linux';
-  throw new Error(
-    `Unsupported platform "${p}". Perfetto trace_processor prebuilts are only available for Linux and macOS.`,
-  );
+/**
+ * Direct download URLs for the actual trace_processor_shell binary.
+ * These bypass the Python wrapper script at get.perfetto.dev which requires
+ * python3 in PATH — problematic in IDE-hosted MCP server processes.
+ */
+const BINARY_URLS: Record<string, string> = {
+  'darwin-arm64': `https://commondatastorage.googleapis.com/perfetto-luci-artifacts/${PERFETTO_VERSION}/mac-arm64/${BINARY_NAME}`,
+  'darwin-x64': `https://commondatastorage.googleapis.com/perfetto-luci-artifacts/${PERFETTO_VERSION}/mac-amd64/${BINARY_NAME}`,
+  'linux-x64': `https://commondatastorage.googleapis.com/perfetto-luci-artifacts/${PERFETTO_VERSION}/linux-amd64/${BINARY_NAME}`,
+  'linux-arm64': `https://commondatastorage.googleapis.com/perfetto-luci-artifacts/${PERFETTO_VERSION}/linux-arm64/${BINARY_NAME}`,
+  'linux-arm': `https://commondatastorage.googleapis.com/perfetto-luci-artifacts/${PERFETTO_VERSION}/linux-arm/${BINARY_NAME}`,
+};
+
+function getBinaryUrl(): string {
+  const key = `${os.platform()}-${os.arch()}`;
+  const url = BINARY_URLS[key];
+  if (!url) {
+    throw new Error(
+      `No trace_processor_shell binary available for ${key}. Supported: ${Object.keys(BINARY_URLS).join(', ')}`,
+    );
+  }
+  return url;
 }
 
 export function defaultBinaryPath(): string {
@@ -25,22 +40,33 @@ export function defaultBinaryPath(): string {
 }
 
 export async function downloadBinary(destPath: string): Promise<void> {
-  getPlatform(); // validate platform
-
+  const url = getBinaryUrl();
   const destDir = path.dirname(destPath);
   await fs.mkdir(destDir, { recursive: true });
 
-  await execFileAsync('curl', ['-L', '-o', destPath, DOWNLOAD_URL], {
-    timeout: 120_000,
-  });
-  await fs.chmod(destPath, 0o755);
+  const tmpPath = `${destPath}.${Date.now()}.tmp`;
+  try {
+    await execFileAsync('curl', ['-f', '-L', '-o', tmpPath, url], {
+      timeout: 120_000,
+    });
+    await fs.chmod(tmpPath, 0o755);
+    await fs.rename(tmpPath, destPath);
+  } catch (e) {
+    await fs.unlink(tmpPath).catch(() => {});
+    throw e;
+  }
 }
 
 export async function ensureBinary(binPath?: string): Promise<string> {
   const resolved = binPath ?? defaultBinaryPath();
 
   if (existsSync(resolved)) {
-    return resolved;
+    const stat = await fs.stat(resolved);
+    if (stat.size > 1_000_000) {
+      return resolved;
+    }
+    // File exists but is too small (likely the old Python wrapper script).
+    await fs.unlink(resolved);
   }
 
   await downloadBinary(resolved);
