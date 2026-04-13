@@ -1,6 +1,6 @@
 {
   "name": "roku-perfetto",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Library for Roku Perfetto tracing — ECP control, WebSocket recording, trace analysis with PerfettoSQL, and AI-friendly performance reports",
   "type": "module",
   "main": "./dist/lib.js",

@@ -59,7 +59,7 @@ SELECT
 FROM slice s
 LEFT JOIN thread_track tt ON s.track_id = tt.id
 LEFT JOIN thread t ON tt.utid = t.utid
-WHERE s.name = 'rendezvous'
+WHERE s.name IN ('rendezvous', 'Rendezvous')
 ORDER BY s.dur DESC
 `;
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-04-13
+
+### Fixed
+- **TraceProcessor**: Replaced broken HTTP RPC (protobuf) transport with CLI-based `-Q` flag approach that reliably parses CSV output from `trace_processor`.
+- **Rendezvous query**: Match both `Rendezvous` (actual Roku OS name) and `rendezvous` (documented name).
+- Removed `axios` dependency from TraceProcessor (only used by PerfettoClient now).
+
 ## [1.0.0] - 2026-04-13
 
 ### Added
